@@ -121,6 +121,7 @@ export interface User {
 
 export interface AuthResponse {
   message?: string;
+  token?: string;
   user?: User;
   authenticated?: boolean;
   error?: string;

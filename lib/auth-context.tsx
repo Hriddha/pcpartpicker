@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { User, LoginCredentials, RegisterCredentials } from "./types";
-import { authAPI } from "./api";
+import { authAPI, setAuthToken } from "./api";
 
 interface AuthContextType {
   user: User | null;
@@ -16,8 +16,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Demo mode - uses localStorage for the frontend demo
-const DEMO_MODE = false;
+const TOKEN_KEY = "pcpartpicker_token";
+const USER_KEY  = "pcpartpicker_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -26,16 +26,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (DEMO_MODE) {
-        const storedUser = localStorage.getItem("pcpartpicker_user");
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) { setUser(null); return; }
+
+      // Restore token into API layer so requests include Authorization header
+      setAuthToken(token);
+
+      const response = await authAPI.checkSession();
+      if (response.authenticated && response.user) {
+        setUser(response.user);
+        localStorage.setItem(USER_KEY, JSON.stringify(response.user));
       } else {
-        const response = await authAPI.checkSession();
-        if (response.authenticated && response.user) {
-          setUser(response.user);
-        }
+        // Token expired or invalid
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        setUser(null);
       }
     } catch {
       setUser(null);
@@ -51,22 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      if (DEMO_MODE) {
-        // Demo login - accept any valid-looking email/password
-        const demoUser: User = {
-          user_id: 1,
-          username: credentials.email.split("@")[0],
-          email: credentials.email,
-          roles: ["user"],
-          build_count: 0,
-        };
-        localStorage.setItem("pcpartpicker_user", JSON.stringify(demoUser));
-        setUser(demoUser);
-      } else {
-        const response = await authAPI.login(credentials);
-        if (response.user) {
-          setUser(response.user);
-        }
+      const response = await authAPI.login(credentials);
+      if (response.token && response.user) {
+        localStorage.setItem(TOKEN_KEY, response.token);
+        localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        setAuthToken(response.token);
+        setUser(response.user);
       }
     } finally {
       setIsLoading(false);
@@ -76,22 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (credentials: RegisterCredentials) => {
     setIsLoading(true);
     try {
-      if (DEMO_MODE) {
-        // Demo registration
-        const demoUser: User = {
-          user_id: Date.now(),
-          username: credentials.username,
-          email: credentials.email,
-          roles: ["user"],
-          build_count: 0,
-        };
-        localStorage.setItem("pcpartpicker_user", JSON.stringify(demoUser));
-        setUser(demoUser);
-      } else {
-        const response = await authAPI.register(credentials);
-        if (response.user) {
-          setUser(response.user);
-        }
+      const response = await authAPI.register(credentials);
+      if (response.token && response.user) {
+        localStorage.setItem(TOKEN_KEY, response.token);
+        localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        setAuthToken(response.token);
+        setUser(response.user);
       }
     } finally {
       setIsLoading(false);
@@ -99,17 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    setIsLoading(true);
-    try {
-      if (DEMO_MODE) {
-        localStorage.removeItem("pcpartpicker_user");
-      } else {
-        await authAPI.logout();
-      }
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setAuthToken(null);
+    setUser(null);
   };
 
   return (

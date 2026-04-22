@@ -23,14 +23,28 @@ import type {
 // Base API URL - Update this to match your PHP server location
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php';
 
+// In-memory token store (set by auth-context after login)
+let _authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+}
+
 // Generic fetch wrapper with error handling
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string>),
+  };
+
+  // Attach JWT token if available
+  if (_authToken) {
+    headers['Authorization'] = `Bearer ${_authToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -139,27 +153,20 @@ export const authAPI = {
     fetchAPI<AuthResponse>('/auth.php?action=login', {
       method: 'POST',
       body: JSON.stringify(credentials),
-      credentials: 'include',
     }),
   register: (credentials: RegisterCredentials) =>
     fetchAPI<AuthResponse>('/auth.php?action=register', {
       method: 'POST',
       body: JSON.stringify(credentials),
-      credentials: 'include',
     }),
   logout: () =>
     fetchAPI<AuthResponse>('/auth.php?action=logout', {
       method: 'POST',
-      credentials: 'include',
     }),
   checkSession: () =>
-    fetchAPI<AuthResponse>('/auth.php?action=check', {
-      credentials: 'include',
-    }),
+    fetchAPI<AuthResponse>('/auth.php?action=check'),
   getCurrentUser: () =>
-    fetchAPI<{ user: User }>('/auth.php?action=user', {
-      credentials: 'include',
-    }),
+    fetchAPI<{ user: User }>('/auth.php?action=user'),
 };
 
 // Stats API
