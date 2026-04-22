@@ -1,18 +1,22 @@
 FROM php:8.2-apache
 
-RUN a2enmod rewrite headers
+# Fix: disable conflicting MPMs, enable only prefork
+RUN a2dismod mpm_event mpm_worker || true && \
+    a2enmod mpm_prefork rewrite headers
 
+# Install PHP MySQL extension
 RUN docker-php-ext-install pdo pdo_mysql
 
+# Copy PHP API files
 COPY api/php/ /var/www/html/
 
-# Use Railway's dynamic $PORT
+# Apache config
 RUN echo '<Directory /var/www/html>\n\
     AllowOverride All\n\
     Require all granted\n\
 </Directory>' >> /etc/apache2/apache2.conf
 
-# Script to set Apache port from $PORT env var at runtime
+# Copy and set entrypoint for Railway dynamic port
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
