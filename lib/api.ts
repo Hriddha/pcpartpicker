@@ -1,61 +1,40 @@
-/**
- * API Service for PC Part Picker
- * Handles all communication with the PHP backend
- */
-
 import type {
-  Processor,
-  Motherboard,
-  RAM,
-  GPU,
-  Storage,
-  PowerSupply,
-  PCBuild,
-  CompatibilityResult,
-  SelectedParts,
-  AuthResponse,
-  LoginCredentials,
-  RegisterCredentials,
-  User,
-  Stats,
+  Processor, Motherboard, RAM, GPU, Storage, PowerSupply,
+  PCBuild, CompatibilityResult, SelectedParts, AuthResponse,
+  LoginCredentials, RegisterCredentials, User, Stats,
 } from './types';
 
-// Base API URL - Update this to match your PHP server location
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/php';
-
-// In-memory token store (set by auth-context after login)
 let _authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
 }
 
-// Generic fetch wrapper with error handling
+// Routes all requests through /api/proxy to avoid CORS issues
+function buildProxyUrl(endpoint: string): string {
+  const clean = endpoint.replace(/^\//, '');
+  const [pathPart, queryPart] = clean.split('?');
+  const params = new URLSearchParams(queryPart || '');
+  params.set('path', pathPart);
+  return `/api/proxy?${params.toString()}`;
+}
+
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
   };
+  if (_authToken) headers['Authorization'] = `Bearer ${_authToken}`;
 
-  // Attach JWT token if available
-  if (_authToken) {
-    headers['Authorization'] = `Bearer ${_authToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetch(buildProxyUrl(endpoint), { ...options, headers });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `HTTP error! status: ${response.status}`);
   }
-
   return response.json();
 }
 
-// Processors API
 export const processorsAPI = {
   getAll: (socketType?: string) => {
     const params = socketType ? `?socket_type=${encodeURIComponent(socketType)}` : '';
@@ -64,7 +43,6 @@ export const processorsAPI = {
   getById: (id: number) => fetchAPI<Processor>(`/processors.php?id=${id}`),
 };
 
-// Motherboards API
 export const motherboardsAPI = {
   getAll: (socketType?: string) => {
     const params = socketType ? `?socket_type=${encodeURIComponent(socketType)}` : '';
@@ -73,7 +51,6 @@ export const motherboardsAPI = {
   getById: (id: number) => fetchAPI<Motherboard>(`/motherboards.php?id=${id}`),
 };
 
-// RAM API
 export const ramAPI = {
   getAll: (type?: string) => {
     const params = type ? `?type=${encodeURIComponent(type)}` : '';
@@ -82,7 +59,6 @@ export const ramAPI = {
   getById: (id: number) => fetchAPI<RAM>(`/ram.php?id=${id}`),
 };
 
-// GPUs API
 export const gpusAPI = {
   getAll: (minVram?: number) => {
     const params = minVram ? `?min_vram=${minVram}` : '';
@@ -91,7 +67,6 @@ export const gpusAPI = {
   getById: (id: number) => fetchAPI<GPU>(`/gpus.php?id=${id}`),
 };
 
-// Storage API
 export const storageAPI = {
   getAll: (type?: string) => {
     const params = type ? `?type=${encodeURIComponent(type)}` : '';
@@ -100,7 +75,6 @@ export const storageAPI = {
   getById: (id: number) => fetchAPI<Storage>(`/storage.php?id=${id}`),
 };
 
-// Power Supplies API
 export const powerSuppliesAPI = {
   getAll: (minWattage?: number) => {
     const params = minWattage ? `?min_wattage=${minWattage}` : '';
@@ -109,28 +83,22 @@ export const powerSuppliesAPI = {
   getById: (id: number) => fetchAPI<PowerSupply>(`/power_supplies.php?id=${id}`),
 };
 
-// Builds API
 export const buildsAPI = {
   getAll: () => fetchAPI<PCBuild[]>('/builds.php'),
   getByUser: (userId: number) => fetchAPI<PCBuild[]>(`/builds.php?user_id=${userId}`),
   getById: (id: number) => fetchAPI<PCBuild>(`/builds.php?id=${id}`),
   create: (build: PCBuild) =>
     fetchAPI<{ message: string; id: number }>('/builds.php', {
-      method: 'POST',
-      body: JSON.stringify(build),
+      method: 'POST', body: JSON.stringify(build),
     }),
   update: (id: number, build: PCBuild) =>
     fetchAPI<{ message: string }>(`/builds.php?id=${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(build),
+      method: 'PUT', body: JSON.stringify(build),
     }),
   delete: (id: number) =>
-    fetchAPI<{ message: string }>(`/builds.php?id=${id}`, {
-      method: 'DELETE',
-    }),
+    fetchAPI<{ message: string }>(`/builds.php?id=${id}`, { method: 'DELETE' }),
 };
 
-// Compatibility API
 export const compatibilityAPI = {
   check: (parts: Partial<SelectedParts>) => {
     const payload = {
@@ -141,35 +109,26 @@ export const compatibilityAPI = {
       psu_id: parts.psu?.psu_id,
     };
     return fetchAPI<CompatibilityResult>('/compatibility.php', {
-      method: 'POST',
-      body: JSON.stringify(payload),
+      method: 'POST', body: JSON.stringify(payload),
     });
   },
 };
 
-// Authentication API
 export const authAPI = {
   login: (credentials: LoginCredentials) =>
     fetchAPI<AuthResponse>('/auth.php?action=login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
+      method: 'POST', body: JSON.stringify(credentials),
     }),
   register: (credentials: RegisterCredentials) =>
     fetchAPI<AuthResponse>('/auth.php?action=register', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
+      method: 'POST', body: JSON.stringify(credentials),
     }),
   logout: () =>
-    fetchAPI<AuthResponse>('/auth.php?action=logout', {
-      method: 'POST',
-    }),
-  checkSession: () =>
-    fetchAPI<AuthResponse>('/auth.php?action=check'),
-  getCurrentUser: () =>
-    fetchAPI<{ user: User }>('/auth.php?action=user'),
+    fetchAPI<AuthResponse>('/auth.php?action=logout', { method: 'POST' }),
+  checkSession: () => fetchAPI<AuthResponse>('/auth.php?action=check'),
+  getCurrentUser: () => fetchAPI<{ user: User }>('/auth.php?action=user'),
 };
 
-// Stats API
 export const statsAPI = {
   getAll: () => fetchAPI<Stats>('/stats.php'),
 };
