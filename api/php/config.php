@@ -6,8 +6,8 @@ ob_start();
  */
 
 // Database credentials - Update these with your actual MySQL credentials
-define('DB_HOST', 'sql311.infinityfree.com ');
-define('DB_NAME', 'if0_41721703_pcpartpicker ');
+define('DB_HOST', 'sql311.infinityfree.com');
+define('DB_NAME', 'if0_41721703_pcpartpicker');
 define('DB_USER', 'if0_41721703');
 define('DB_PASS', 'RudraSaha12');
 define('DB_CHARSET', 'utf8mb4');
