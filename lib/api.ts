@@ -128,7 +128,7 @@ export const compatibilityAPI = {
  
 export const authAPI = {
   login: (credentials: any) =>
-    fetchAPI('/api/auth.php?action=login', {
+    fetchAPI('/auth.php?action=login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     }),
