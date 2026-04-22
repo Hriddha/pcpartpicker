@@ -1,4 +1,5 @@
 <?php
+ob_start();
 /**
  * Database Configuration for PC Part Picker
  * This file contains the database connection settings
