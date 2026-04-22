@@ -4,16 +4,7 @@ export function setAuthToken(token: string | null) {
   _authToken = token;
 }
 
-// ================= PROXY URL BUILDER =================
-function buildProxyUrl(endpoint: string): string {
-  const clean = endpoint.replace(/^\//, '');
-  const [pathPart, queryPart] = clean.split('?');
 
-  const params = new URLSearchParams(queryPart || '');
-  params.set('path', pathPart);
-
-  return `/api/proxy?${params.toString()}`;
-}
 
 // ================= CORE FETCH =================
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -27,10 +18,28 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
     headers['Authorization'] = `Bearer ${_authToken}`;
   }
 
-  const response = await fetch(buildProxyUrl(endpoint), {
+const API_BASE = "https://pcpartpicker.whf.bz/api";
+
+async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const url = `${API_BASE}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(error.error || `HTTP error ${response.status}`);
+  }
+
+  return response.json();
+}
 
   let data: any;
 
