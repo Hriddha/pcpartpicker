@@ -1,18 +1,19 @@
 FROM php:8.2-apache
 
-# Enable Apache mod_rewrite
 RUN a2enmod rewrite headers
 
-# Install PHP MySQL extension
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Copy PHP API files
 COPY api/php/ /var/www/html/
 
-# Apache config to allow .htaccess
+# Use Railway's dynamic $PORT
 RUN echo '<Directory /var/www/html>\n\
     AllowOverride All\n\
     Require all granted\n\
 </Directory>' >> /etc/apache2/apache2.conf
 
-EXPOSE 80
+# Script to set Apache port from $PORT env var at runtime
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+CMD ["/docker-entrypoint.sh"]
