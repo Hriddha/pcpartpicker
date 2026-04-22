@@ -127,14 +127,11 @@ export const compatibilityAPI = {
 };
  
 export const authAPI = {
-login: (credentials: any) =>
-  fetchAPI('/auth.php?action=login', {
-    method: 'POST',
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(credentials),
-  }),
+  login: (credentials: any) =>
+    fetchAPI('/api/auth.php?action=login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
 
   register: (credentials: any) =>
     fetchAPI('/auth.php?action=register', {
