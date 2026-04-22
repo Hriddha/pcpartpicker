@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PHP_BASE = process.env.PHP_API_URL || 'https://pcpartpicker.infinityfreeapp.com/api';
+const PHP_BASE = process.env.PHP_API_URL || 'https://pcpartpicker.infinityfreeapp.com/api/';
 
 export async function GET(request: NextRequest) {
   return proxyRequest(request);
