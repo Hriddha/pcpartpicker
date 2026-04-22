@@ -142,7 +142,7 @@ export const compatibilityAPI = {
     });
   },
 };
-
+ 
 export const authAPI = {
   login: (credentials: any) =>
     fetchAPI('/auth.php?action=login', {
