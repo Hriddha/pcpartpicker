@@ -113,7 +113,7 @@ export const compatibilityAPI = {
     });
   },
 };
-
+ 
 export const authAPI = {
   login: (credentials: LoginCredentials) =>
     fetchAPI<AuthResponse>('/auth.php?action=login', {
