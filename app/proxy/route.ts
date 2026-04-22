@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   return proxyRequest(request);
 }
-
+ 
 async function proxyRequest(request: NextRequest) {
   try {
     // Get the target path and query from the request URL
