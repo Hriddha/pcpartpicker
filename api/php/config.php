@@ -12,7 +12,7 @@ define('DB_PASS', 'RudraSaha12');
 define('DB_CHARSET', 'utf8mb4');
 
 // CORS Headers for API access
-header('Access-Control-Allow-Origin: https://your-app.vercel.app');
+header('Access-Control-Allow-Origin: https://pcpartpicker-eight.vercel.app');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json');
