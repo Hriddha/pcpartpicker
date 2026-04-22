@@ -1,99 +1,98 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 const PHP_BASE =
-  process.env.PHP_API_URL || 'https://pcpartpicker.whf.bz/api';
+  process.env.PHP_API_URL || "https://pcpartpicker.whf.bz/api";
 
 export async function GET(req: NextRequest) {
-  return proxyRequest(req);
+  return handler(req);
 }
 
 export async function POST(req: NextRequest) {
-  return proxyRequest(req);
+  return handler(req);
 }
 
 export async function PUT(req: NextRequest) {
-  return proxyRequest(req);
+  return handler(req);
 }
 
 export async function DELETE(req: NextRequest) {
-  return proxyRequest(req);
+  return handler(req);
 }
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 200 });
 }
 
-async function proxyRequest(request: NextRequest) {
+async function handler(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const url = new URL(req.url);
 
-    const path = searchParams.get('path');
+    const path = url.searchParams.get("path");
     if (!path) {
       return NextResponse.json(
-        { error: 'Missing path parameter' },
+        { error: "Missing path" },
         { status: 400 }
       );
     }
 
-    // Remove "path" and keep everything else
-    const filteredParams = new URLSearchParams(searchParams);
-    filteredParams.delete('path');
-
-    // Build clean target URL
+    // Build clean backend URL
     const targetUrl = new URL(`${PHP_BASE}/${path}`);
 
-    filteredParams.forEach((value, key) => {
-      targetUrl.searchParams.append(key, value);
+    // Copy all query params except "path"
+    url.searchParams.forEach((value, key) => {
+      if (key !== "path") {
+        targetUrl.searchParams.append(key, value);
+      }
     });
 
-    // Build headers
+    console.log("➡️ Proxying to:", targetUrl.toString());
+
+    // Forward headers safely
     const headers = new Headers();
-    headers.set('Content-Type', 'application/json');
-    headers.set('Accept', 'application/json');
-    headers.set('X-Requested-With', 'XMLHttpRequest');
-    headers.set(
-      'User-Agent',
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36'
-    );
+    headers.set("Content-Type", "application/json");
+    headers.set("Accept", "application/json");
 
-    // Forward auth header
-    const auth = request.headers.get('authorization');
-    if (auth) headers.set('Authorization', auth);
+    const auth = req.headers.get("authorization");
+    if (auth) headers.set("Authorization", auth);
 
-    const options: RequestInit = {
-      method: request.method,
-      headers,
-    };
+    // Forward body if needed
+    let body: string | undefined;
 
-    if (request.method !== 'GET') {
-      options.body = await request.text();
+    if (req.method !== "GET") {
+      body = await req.text();
     }
 
-    const response = await fetch(targetUrl.toString(), options);
+    const response = await fetch(targetUrl.toString(), {
+      method: req.method,
+      headers,
+      body,
+    });
+
     const text = await response.text();
+
+    console.log("⬅️ Backend status:", response.status);
+    console.log("⬅️ Backend response preview:", text.slice(0, 200));
 
     // Try JSON parse
     try {
       const data = JSON.parse(text);
       return NextResponse.json(data, { status: response.status });
     } catch {
-      console.error('❌ Non-JSON response from PHP:', text.slice(0, 300));
-
       return NextResponse.json(
         {
-          error: 'Invalid JSON response from backend',
+          error: "Backend did not return JSON",
           preview: text.slice(0, 200),
         },
         { status: 502 }
       );
     }
-  } catch (error: any) {
-    console.error('❌ Proxy error:', error);
+  } catch (err: any) {
+    console.error("🔥Proxy crash:", err);
 
     return NextResponse.json(
       {
-        error: 'Proxy failed',
-        message: error?.message || 'unknown error',
+        error: "Proxy crashed",
+        message: err?.message || "unknown error",
       },
       { status: 500 }
     );
