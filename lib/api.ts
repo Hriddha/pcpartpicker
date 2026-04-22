@@ -1,95 +1,161 @@
 const API_BASE = "https://pcpartpicker.whf.bz/api";
 
-let _authToken: string | null = null;
+let authToken: string | null = null;
 
+// ================= AUTH TOKEN =================
 export function setAuthToken(token: string | null) {
-  _authToken = token;
+  authToken = token;
 }
 
 // ================= CORE FETCH =================
-async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE}${endpoint}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...((options.headers as Record<string, string>) || {}),
+    ...(options.headers as Record<string, string> || {}),
   };
 
-  if (_authToken) {
-    headers["Authorization"] = `Bearer ${_authToken}`;
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  let data: any;
   try {
-    data = await response.json();
-  } catch {
-    throw new Error("Invalid JSON response from server");
-  }
+    console.log("API CALL:", url);
 
-  if (!response.ok) {
-    throw new Error(data?.error || `HTTP error ${response.status}`);
-  }
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
 
-  return data as T;
+    clearTimeout(timeout);
+
+    const text = await response.text();
+
+    if (!text) {
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      return {};
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error("Invalid JSON:", text);
+      throw new Error("Server returned invalid JSON");
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || `HTTP error ${response.status}`);
+    }
+
+    return data;
+
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      throw new Error("Request timeout (server slow)");
+    }
+    throw error;
+  }
 }
 
+// ================= APIs =================
+
+// ---- AUTH ----
+export const authAPI = {
+  login: (credentials: any) =>
+    fetchAPI('/auth.php?action=login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+
+  register: (credentials: any) =>
+    fetchAPI('/auth.php?action=register', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+
+  logout: () =>
+    fetchAPI('/auth.php?action=logout', {
+      method: 'POST',
+    }),
+
+  checkSession: () =>
+    fetchAPI('/auth.php?action=check'),
+
+  getCurrentUser: () =>
+    fetchAPI('/auth.php?action=user'),
+};
+
+// ---- PROCESSORS ----
 export const processorsAPI = {
-  getAll: (socketType?: string) => {
-    const params = socketType ? `?socket_type=${encodeURIComponent(socketType)}` : '';
-    return fetchAPI(`/processors.php${params}`);
-  },
-  getById: (id: number) => fetchAPI(`/processors.php?id=${id}`),
+  getAll: (socketType?: string) =>
+    fetchAPI(`/processors.php${socketType ? `?socket_type=${encodeURIComponent(socketType)}` : ''}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/processors.php?id=${id}`),
 };
 
+// ---- MOTHERBOARDS ----
 export const motherboardsAPI = {
-  getAll: (socketType?: string) => {
-    const params = socketType ? `?socket_type=${encodeURIComponent(socketType)}` : '';
-    return fetchAPI(`/motherboards.php${params}`);
-  },
-  getById: (id: number) => fetchAPI(`/motherboards.php?id=${id}`),
+  getAll: (socketType?: string) =>
+    fetchAPI(`/motherboards.php${socketType ? `?socket_type=${encodeURIComponent(socketType)}` : ''}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/motherboards.php?id=${id}`),
 };
 
+// ---- RAM ----
 export const ramAPI = {
-  getAll: (type?: string) => {
-    const params = type ? `?type=${encodeURIComponent(type)}` : '';
-    return fetchAPI(`/ram.php${params}`);
-  },
-  getById: (id: number) => fetchAPI(`/ram.php?id=${id}`),
+  getAll: (type?: string) =>
+    fetchAPI(`/ram.php${type ? `?type=${encodeURIComponent(type)}` : ''}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/ram.php?id=${id}`),
 };
 
+// ---- GPU ----
 export const gpusAPI = {
-  getAll: (minVram?: number) => {
-    const params = minVram ? `?min_vram=${minVram}` : '';
-    return fetchAPI(`/gpus.php${params}`);
-  },
-  getById: (id: number) => fetchAPI(`/gpus.php?id=${id}`),
+  getAll: (minVram?: number) =>
+    fetchAPI(`/gpus.php${minVram ? `?min_vram=${minVram}` : ''}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/gpus.php?id=${id}`),
 };
 
+// ---- STORAGE ----
 export const storageAPI = {
-  getAll: (type?: string) => {
-    const params = type ? `?type=${encodeURIComponent(type)}` : '';
-    return fetchAPI(`/storage.php${params}`);
-  },
-  getById: (id: number) => fetchAPI(`/storage.php?id=${id}`),
+  getAll: (type?: string) =>
+    fetchAPI(`/storage.php${type ? `?type=${encodeURIComponent(type)}` : ''}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/storage.php?id=${id}`),
 };
 
+// ---- PSU ----
 export const powerSuppliesAPI = {
-  getAll: (minWattage?: number) => {
-    const params = minWattage ? `?min_wattage=${minWattage}` : '';
-    return fetchAPI(`/power_supplies.php${params}`);
-  },
-  getById: (id: number) => fetchAPI(`/power_supplies.php?id=${id}`),
+  getAll: (minWattage?: number) =>
+    fetchAPI(`/power_supplies.php${minWattage ? `?min_wattage=${minWattage}` : ''}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/power_supplies.php?id=${id}`),
 };
 
+// ---- BUILDS ----
 export const buildsAPI = {
   getAll: () => fetchAPI('/builds.php'),
-  getByUser: (userId: number) => fetchAPI(`/builds.php?user_id=${userId}`),
-  getById: (id: number) => fetchAPI(`/builds.php?id=${id}`),
+
+  getByUser: (userId: number) =>
+    fetchAPI(`/builds.php?user_id=${userId}`),
+
+  getById: (id: number) =>
+    fetchAPI(`/builds.php?id=${id}`),
 
   create: (build: any) =>
     fetchAPI('/builds.php', {
@@ -109,6 +175,7 @@ export const buildsAPI = {
     }),
 };
 
+// ---- COMPATIBILITY ----
 export const compatibilityAPI = {
   check: (parts: any) => {
     const payload = {
@@ -125,35 +192,8 @@ export const compatibilityAPI = {
     });
   },
 };
- 
-export const authAPI = {
-  login: (credentials: any) =>
-    fetchAPI('/auth.php?action=login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    }),
 
-  register: (credentials: any) =>
-    fetchAPI('/auth.php?action=register', {
-      method: 'POST',
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    }),
-
-  logout: () =>
-    fetchAPI('/auth.php?action=logout', {
-      method: 'POST',
-    }),
-
-  checkSession: () =>
-    fetchAPI('/auth.php?action=check'),
-
-  getCurrentUser: () =>
-    fetchAPI('/auth.php?action=user'),
-};
-
+// ---- STATS ----
 export const statsAPI = {
   getAll: () => fetchAPI('/stats.php'),
 };
