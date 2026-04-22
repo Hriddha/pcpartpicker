@@ -6,47 +6,37 @@ export function setAuthToken(token: string | null) {
 
 
 
-// ================= CORE FETCH =================
-async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-
-  // ✅ Use Authorization header again (proxy makes it safe)
-  if (_authToken) {
-    headers['Authorization'] = `Bearer ${_authToken}`;
-  }
-
 const API_BASE = "https://pcpartpicker.whf.bz/api";
 
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+let _authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+}
+
+// ================= CORE FETCH =================
+async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options?.headers as Record<string, string>),
+    ...((options.headers as Record<string, string>) || {}),
   };
+
+  if (_authToken) {
+    headers["Authorization"] = `Bearer ${_authToken}`;
+  }
 
   const response = await fetch(url, {
     ...options,
     headers,
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(error.error || `HTTP error ${response.status}`);
-  }
-
-  return response.json();
-}
-
   let data: any;
-
   try {
     data = await response.json();
   } catch {
-    throw new Error('Invalid JSON response from server');
+    throw new Error("Invalid JSON response from server");
   }
 
   if (!response.ok) {
@@ -55,6 +45,7 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
   return data as T;
 }
+
 export const processorsAPI = {
   getAll: (socketType?: string) => {
     const params = socketType ? `?socket_type=${encodeURIComponent(socketType)}` : '';
@@ -144,11 +135,14 @@ export const compatibilityAPI = {
 };
  
 export const authAPI = {
-  login: (credentials: any) =>
-    fetchAPI('/auth.php?action=login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    }),
+login: (credentials: any) =>
+  fetchAPI('/auth.php?action=login', {
+    method: 'POST',
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(credentials),
+  }),
 
   register: (credentials: any) =>
     fetchAPI('/auth.php?action=register', {
