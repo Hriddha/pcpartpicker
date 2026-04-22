@@ -8,7 +8,7 @@ require_once 'config.php';
 
 // ─── JWT Helpers ─────────────────────────────────────────────────────────────
 
-define('JWT_SECRET', 'CHANGE_THIS_TO_A_LONG_RANDOM_STRING_abc123xyz');
+define('JWT_SECRET', 'x9$kLm#pQr2vNw8zAb5cDe3fGh7jKn1o');
 define('JWT_EXPIRY', 60 * 60 * 24 * 7); // 7 days
 
 function base64UrlEncode($data) {
