@@ -1,11 +1,3 @@
-let _authToken: string | null = null;
-
-export function setAuthToken(token: string | null) {
-  _authToken = token;
-}
-
-
-
 const API_BASE = "https://pcpartpicker.whf.bz/api";
 
 let _authToken: string | null = null;
@@ -147,6 +139,9 @@ login: (credentials: any) =>
   register: (credentials: any) =>
     fetchAPI('/auth.php?action=register', {
       method: 'POST',
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(credentials),
     }),
 
