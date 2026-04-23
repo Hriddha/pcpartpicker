@@ -120,7 +120,7 @@ export const authAPI = {
       method: 'POST', body: JSON.stringify(credentials),
     }),
   register: (credentials: RegisterCredentials) =>
-    fetchAPI<AuthResponse>('/auth.php?action=register', {
+    fetchAPI<AuthResponse>('api/php/auth.php?action=register', {
       method: 'POST', body: JSON.stringify(credentials),
     }),
   logout: () =>
