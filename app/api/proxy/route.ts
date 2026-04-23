@@ -23,7 +23,7 @@ async function proxyRequest(request: NextRequest) {
     searchParams.delete('path');
     const query = searchParams.toString();
     const targetUrl = `${PHP_BASE}/${path}${query ? '?' + query : ''}`;
-
+    console.log('Proxying to:', targetUrl);
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
