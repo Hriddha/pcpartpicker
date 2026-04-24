@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Wrench, Calendar, Cpu, MonitorPlay, MemoryStick, Zap, MoreVertical, Trash2, Edit, Loader2 } from "lucide-react";
+import {
+  Plus, Wrench, Calendar, Cpu, MonitorPlay, MemoryStick,
+  HardDrive, Zap, MoreVertical, Trash2, Edit, Loader2
+} from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +27,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 
 const API_URL = "https://pcpartpicker-production.up.railway.app/builds.php";
 
@@ -37,6 +39,7 @@ interface Build {
   ram_name: string | null;
   storage_name: string | null;
   psu_name: string | null;
+  wattage: number | null;
 }
 
 function BuildsContent() {
@@ -95,12 +98,8 @@ function BuildsContent() {
           Create an account to save and manage your PC builds
         </p>
         <div className="flex gap-4">
-          <Link href="/login">
-            <Button>Sign In</Button>
-          </Link>
-          <Link href="/register">
-            <Button variant="outline">Create Account</Button>
-          </Link>
+          <Link href="/login"><Button>Sign In</Button></Link>
+          <Link href="/register"><Button variant="outline">Create Account</Button></Link>
         </div>
       </div>
     );
@@ -116,8 +115,6 @@ function BuildsContent() {
 
   return (
     <div className="space-y-6">
-      <Toaster position="top-right" />
-
       {/* Confirm Delete Dialog */}
       <AlertDialog
         open={confirmDeleteId !== null}
@@ -136,11 +133,10 @@ function BuildsContent() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => confirmDeleteId !== null && handleDelete(confirmDeleteId)}
             >
-              {deletingId === confirmDeleteId ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Delete"
-              )}
+              {deletingId === confirmDeleteId
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : "Delete"
+              }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -166,9 +162,7 @@ function BuildsContent() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Wrench className="mb-4 h-12 w-12 text-muted-foreground" />
             <h3 className="mb-2 text-xl font-semibold">No builds yet</h3>
-            <p className="mb-4 text-muted-foreground">
-              Start building your first PC configuration
-            </p>
+            <p className="mb-4 text-muted-foreground">Start building your first PC configuration</p>
             <Link href="/builder">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -235,21 +229,26 @@ function BuildsContent() {
                       <span className="truncate text-muted-foreground">{build.ram_name}</span>
                     </div>
                   )}
-                  {!build.processor_name && !build.gpu_name && !build.ram_name && (
+                  {build.storage_name && (
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="truncate text-muted-foreground">{build.storage_name}</span>
+                    </div>
+                  )}
+                  {!build.processor_name && !build.gpu_name && !build.ram_name && !build.storage_name && (
                     <p className="text-xs text-muted-foreground">No components selected</p>
                   )}
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
-                  <div className="flex items-center gap-1 text-sm">
+                  <div className="flex items-center gap-1">
                     <Zap className="h-4 w-4 text-yellow-500" />
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-xs text-muted-foreground">
                       {build.psu_name ?? "No PSU"}
+                      {build.wattage ? ` · ${build.wattage}W` : ""}
                     </span>
                   </div>
                   <Link href={`/builder?load=${build.build_id}`}>
-                    <Button variant="outline" size="sm">
-                      View Build
-                    </Button>
+                    <Button variant="outline" size="sm">View Build</Button>
                   </Link>
                 </div>
               </CardContent>
