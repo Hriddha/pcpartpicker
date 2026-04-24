@@ -19,33 +19,16 @@ define('DB_USER',    getenv('MYSQLUSER')     ?: 'root');
 define('DB_PASS',    getenv('MYSQLPASSWORD') ?: 'ttwjFamNSBqjvpcpGhsZJCMXbaJpCndv');
 define('DB_PORT',    getenv('MYSQLPORT')     ?: '3306');
 define('DB_CHARSET', 'utf8mb4');
+// ──────────────────────────────────────────────────────────────────────────────
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
-// To allow multiple origins set ALLOWED_ORIGIN env var as comma-separated list:
-// e.g. https://pcpartpicker-eight.vercel.app,http://localhost:3000
-$allowedOrigins = array_filter(array_map('trim', explode(',',
-    getenv('ALLOWED_ORIGIN') ?: 'https://pcpartpicker-eight.vercel.app,http://localhost:3000'
-)));
-
-$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
-
-if (in_array($requestOrigin, $allowedOrigins, true)) {
-    header("Access-Control-Allow-Origin: $requestOrigin");
-} else {
-    // Fallback to primary allowed origin
-    header('Access-Control-Allow-Origin: ' . reset($allowedOrigins));
-}
-
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Access-Control-Allow-Credentials: true');
-header('Content-Type: application/json');
-
+// CORS is handled by .htaccess
+// Handle OPTIONS preflight here so PHP doesn't run unnecessary DB code
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit();
 }
-// ──────────────────────────────────────────────────────────────────────────────
+
+header('Content-Type: application/json');
 
 class Database {
     private static $instance = null;
