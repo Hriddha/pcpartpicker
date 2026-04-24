@@ -9,14 +9,15 @@ import { SaveBuildDialog } from './save-build-dialog';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  mockProcessors,
-  mockMotherboards,
-  mockRAM,
-  mockGPUs,
-  mockStorage,
-  mockPowerSupplies,
-  checkLocalCompatibility,
-} from '@/lib/mock-data';
+  processorsAPI,
+  motherboardsAPI,
+  ramAPI,
+  gpusAPI,
+  storageAPI,
+  powerSuppliesAPI,
+  buildsAPI,
+  compatibilityAPI,
+} from '@/lib/api';
 import type {
   Processor,
   Motherboard,
@@ -28,12 +29,20 @@ import type {
   CompatibilityResult,
 } from '@/lib/types';
 
-const API_URL = 'https://pcpartpicker-production.up.railway.app/builds.php';
-
 export function PCBuilder() {
   const searchParams = useSearchParams();
   const loadId = searchParams.get('load');
 
+  // Parts lists fetched from API
+  const [processors, setProcessors] = useState<Processor[]>([]);
+  const [motherboards, setMotherboards] = useState<Motherboard[]>([]);
+  const [ramList, setRamList] = useState<RAM[]>([]);
+  const [gpus, setGpus] = useState<GPU[]>([]);
+  const [storageList, setStorageList] = useState<Storage[]>([]);
+  const [psus, setPsus] = useState<PowerSupply[]>([]);
+  const [isLoadingParts, setIsLoadingParts] = useState(true);
+
+  // Current build state
   const [selectedParts, setSelectedParts] = useState<SelectedParts>({
     processor: null,
     motherboard: null,
@@ -49,28 +58,65 @@ export function PCBuilder() {
   const [loadedBuildName, setLoadedBuildName] = useState<string>('');
   const [isLoadingBuild, setIsLoadingBuild] = useState(false);
 
-  // Load build from API when ?load= param is present
+  // Fetch all parts from API on mount
   useEffect(() => {
-    if (!loadId) return;
+    const fetchAllParts = async () => {
+      setIsLoadingParts(true);
+      try {
+        const [procs, mbs, ram, gpuList, storage, psuList] = await Promise.all([
+          processorsAPI.getAll(),
+          motherboardsAPI.getAll(),
+          ramAPI.getAll(),
+          gpusAPI.getAll(),
+          storageAPI.getAll(),
+          powerSuppliesAPI.getAll(),
+        ]);
+        setProcessors(procs);
+        setMotherboards(mbs);
+        setRamList(ram);
+        setGpus(gpuList);
+        setStorageList(storage);
+        setPsus(psuList);
+      } catch (err) {
+        console.error('Failed to load parts:', err);
+        toast.error('Failed to load parts from server');
+      } finally {
+        setIsLoadingParts(false);
+      }
+    };
+
+    fetchAllParts();
+  }, []);
+
+  // Load build from API when ?load= param is present
+  // Only runs after parts lists are loaded so IDs can be matched correctly
+  useEffect(() => {
+    if (!loadId || isLoadingParts) return;
+    if (
+      processors.length === 0 &&
+      motherboards.length === 0 &&
+      ramList.length === 0 &&
+      gpus.length === 0 &&
+      storageList.length === 0 &&
+      psus.length === 0
+    ) return;
 
     const fetchBuild = async () => {
       setIsLoadingBuild(true);
       try {
-        const res = await fetch(`${API_URL}?id=${loadId}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'Failed to load build');
+        const data = await buildsAPI.getById(Number(loadId));
 
-        setLoadedBuildId(data.build_id);
+        setLoadedBuildId(data.build_id!);
         setLoadedBuildName(data.build_name);
 
-        // Match IDs from the API response to the mock data objects
+        // Match IDs from the DB response to the real API-fetched part objects
         setSelectedParts({
-          processor: mockProcessors.find((p) => p.processor_id === data.processor_id) ?? null,
-          motherboard: mockMotherboards.find((m) => m.motherboard_id === data.motherboard_id) ?? null,
-          ram: mockRAM.find((r) => r.ram_id === data.ram_id) ?? null,
-          gpu: mockGPUs.find((g) => g.gpu_id === data.gpu_id) ?? null,
-          storage: mockStorage.find((s) => s.storage_id === data.storage_id) ?? null,
-          psu: mockPowerSupplies.find((p) => p.psu_id === data.psu_id) ?? null,
+          processor: processors.find((p) => p.processor_id === data.processor_id) ?? null,
+          motherboard: motherboards.find((m) => m.motherboard_id === data.motherboard_id) ?? null,
+          ram: ramList.find((r) => r.ram_id === data.ram_id) ?? null,
+          gpu: gpus.find((g) => g.gpu_id === data.gpu_id) ?? null,
+          storage: storageList.find((s) => s.storage_id === data.storage_id) ?? null,
+          psu: psus.find((p) => p.psu_id === data.psu_id) ?? null,
         });
 
         toast.success(`Loaded build: ${data.build_name}`);
@@ -83,26 +129,29 @@ export function PCBuilder() {
     };
 
     fetchBuild();
-  }, [loadId]);
+  }, [loadId, isLoadingParts, processors, motherboards, ramList, gpus, storageList, psus]);
 
-  // Check compatibility whenever parts change
+  // Check compatibility via API whenever parts change
   useEffect(() => {
     const hasAnyPart = Object.values(selectedParts).some(Boolean);
-    if (hasAnyPart) {
-      const result = checkLocalCompatibility({
-        processor: selectedParts.processor,
-        motherboard: selectedParts.motherboard,
-        ram: selectedParts.ram,
-        gpu: selectedParts.gpu,
-        psu: selectedParts.psu,
-      });
-      setCompatibilityResult(result);
-    } else {
+    if (!hasAnyPart) {
       setCompatibilityResult(null);
+      return;
     }
+
+    const checkCompat = async () => {
+      try {
+        const result = await compatibilityAPI.check(selectedParts);
+        setCompatibilityResult(result);
+      } catch (err) {
+        console.error('Compatibility check failed:', err);
+      }
+    };
+
+    checkCompat();
   }, [selectedParts]);
 
-  // Handlers
+  // Part setters
   const setProcessor = useCallback((processor: Processor | null) => {
     setSelectedParts((prev) => ({ ...prev, processor }));
   }, []);
@@ -153,46 +202,27 @@ export function PCBuilder() {
     };
 
     try {
-      // If we have a loaded build ID, UPDATE it instead of creating a new one
       const isUpdate = loadedBuildId !== null;
-      const url = isUpdate ? `${API_URL}?id=${loadedBuildId}` : API_URL;
-      const method = isUpdate ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error('Save failed:', data);
-        toast.error(data.error ?? 'Failed to save build');
-        return;
-      }
-
-      // On new build, store the returned ID for future saves in this session
-      if (!isUpdate && data.id) {
-        setLoadedBuildId(data.id);
+      if (isUpdate) {
+        await buildsAPI.update(loadedBuildId, buildData);
+        toast.success(`Build "${buildName}" updated successfully!`);
+      } else {
+        const result = await buildsAPI.create(buildData);
+        setLoadedBuildId(result.id);
         setLoadedBuildName(buildName);
+        toast.success(`Build "${buildName}" saved successfully!`);
       }
-
-      toast.success(
-        isUpdate
-          ? `Build "${buildName}" updated successfully!`
-          : `Build "${buildName}" saved successfully!`
-      );
     } catch (err) {
-      console.error('Network error:', err);
-      toast.error('Network error — could not save build');
+      console.error('Save error:', err);
+      toast.error('Could not save build');
     }
   };
 
-  // Get compatible motherboards based on selected CPU
+  // Only show motherboards compatible with selected CPU socket
   const compatibleMotherboards = selectedParts.processor
-    ? mockMotherboards.filter((mb) => mb.socket_type === selectedParts.processor?.socket_type)
-    : mockMotherboards;
+    ? motherboards.filter((mb) => mb.socket_type === selectedParts.processor?.socket_type)
+    : motherboards;
 
   const getSocketWarning = () => {
     if (selectedParts.processor && selectedParts.motherboard) {
@@ -203,6 +233,8 @@ export function PCBuilder() {
     return undefined;
   };
 
+  const isLoading = isLoadingParts || isLoadingBuild;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -210,7 +242,9 @@ export function PCBuilder() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">PC Builder</h1>
           <p className="text-muted-foreground">
-            {loadedBuildName ? `Editing: ${loadedBuildName}` : 'Select components to build your perfect PC'}
+            {loadedBuildName
+              ? `Editing: ${loadedBuildName}`
+              : 'Select components to build your perfect PC'}
           </p>
         </div>
         <Badge variant="outline" className="text-sm">
@@ -218,9 +252,11 @@ export function PCBuilder() {
         </Badge>
       </div>
 
-      {isLoadingBuild ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <span className="text-muted-foreground">Loading build...</span>
+          <span className="text-muted-foreground">
+            {isLoadingParts ? 'Loading parts...' : 'Loading build...'}
+          </span>
         </div>
       ) : (
         <div className="grid lg:grid-cols-[1fr,380px] gap-8">
@@ -229,7 +265,7 @@ export function PCBuilder() {
             <PartSelector<Processor>
               category="processor"
               title="Processor (CPU)"
-              items={mockProcessors}
+              items={processors}
               selectedItem={selectedParts.processor}
               onSelect={setProcessor}
               getItemId={(p) => p.processor_id}
@@ -262,7 +298,7 @@ export function PCBuilder() {
             <PartSelector<RAM>
               category="ram"
               title="Memory (RAM)"
-              items={mockRAM}
+              items={ramList}
               selectedItem={selectedParts.ram}
               onSelect={setRam}
               getItemId={(r) => r.ram_id}
@@ -277,7 +313,7 @@ export function PCBuilder() {
             <PartSelector<GPU>
               category="gpu"
               title="Graphics Card (GPU)"
-              items={mockGPUs}
+              items={gpus}
               selectedItem={selectedParts.gpu}
               onSelect={setGpu}
               getItemId={(g) => g.gpu_id}
@@ -291,7 +327,7 @@ export function PCBuilder() {
             <PartSelector<Storage>
               category="storage"
               title="Storage"
-              items={mockStorage}
+              items={storageList}
               selectedItem={selectedParts.storage}
               onSelect={setStorage}
               getItemId={(s) => s.storage_id}
@@ -306,7 +342,7 @@ export function PCBuilder() {
             <PartSelector<PowerSupply>
               category="psu"
               title="Power Supply (PSU)"
-              items={mockPowerSupplies}
+              items={psus}
               selectedItem={selectedParts.psu}
               onSelect={setPsu}
               getItemId={(p) => p.psu_id}
