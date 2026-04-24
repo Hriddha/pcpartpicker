@@ -19,16 +19,30 @@ define('DB_USER',    getenv('MYSQLUSER')     ?: 'root');
 define('DB_PASS',    getenv('MYSQLPASSWORD') ?: 'ttwjFamNSBqjvpcpGhsZJCMXbaJpCndv');
 define('DB_PORT',    getenv('MYSQLPORT')     ?: '3306');
 define('DB_CHARSET', 'utf8mb4');
-// ──────────────────────────────────────────────────────────────────────────────
 
-// CORS is handled by .htaccess
-// Handle OPTIONS preflight here so PHP doesn't run unnecessary DB code
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+$allowedOrigins = [
+    'https://pcpartpicker-eight.vercel.app',
+    'http://localhost:3000',
+];
+
+$requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+if (in_array($requestOrigin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: $requestOrigin");
+    header('Access-Control-Allow-Credentials: true');
+} 
+
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Vary: Origin');
+header('Content-Type: application/json');
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit();
 }
-
-header('Content-Type: application/json');
+// ──────────────────────────────────────────────────────────────────────────────
 
 class Database {
     private static $instance = null;
