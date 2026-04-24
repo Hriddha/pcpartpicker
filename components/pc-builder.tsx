@@ -95,41 +95,41 @@ export function PCBuilder() {
     toast.success('Build cleared');
   }, []);
 
-  const handleSaveBuild = async (buildName: string) => {
-    // In a real app, this would call the PHP API
-    // For now, we simulate saving locally
-    const buildData = {
-      build_name: buildName,
-      processor_id: selectedParts.processor?.processor_id,
-      motherboard_id: selectedParts.motherboard?.motherboard_id,
-      ram_id: selectedParts.ram?.ram_id,
-      gpu_id: selectedParts.gpu?.gpu_id,
-      storage_id: selectedParts.storage?.storage_id,
-      psu_id: selectedParts.psu?.psu_id,
-    };
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Store in localStorage for demo
-    // const existingBuilds = JSON.parse(localStorage.getItem('pcBuilds') || '[]');
-    // existingBuilds.push({ ...buildData, id: Date.now(), created_at: new Date().toISOString() });
-    // localStorage.setItem('pcBuilds', JSON.stringify(existingBuilds));
-    const res = await fetch('https://pcpartpicker-production.up.railway.app/builds.php',{
-      method: "POST",
-      headers:{
-        "Content-Type": "application/json",
-      },
-      body:JSON.stringify({...buildData})
-    })
-
-    const data = await res.json
-    console.log(data)
-    
-
-    toast.success(`Build "${buildName}" saved successfully!`);
+const handleSaveBuild = async (buildName: string) => {
+  const buildData = {
+    build_name: buildName,
+    processor_id: selectedParts.processor?.processor_id ?? null,
+    motherboard_id: selectedParts.motherboard?.motherboard_id ?? null,
+    ram_id: selectedParts.ram?.ram_id ?? null,
+    gpu_id: selectedParts.gpu?.gpu_id ?? null,
+    storage_id: selectedParts.storage?.storage_id ?? null,
+    psu_id: selectedParts.psu?.psu_id ?? null,
   };
 
+  try {
+    const res = await fetch('https://pcpartpicker-production.up.railway.app/builds.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildData),
+    });
+
+    const data = await res.json(); // ← was missing ()
+
+    if (!res.ok) {
+      console.error('Save failed:', data);
+      toast.error(data.error ?? 'Failed to save build');
+      return;
+    }
+
+    console.log('Build saved:', data);
+    toast.success(`Build "${buildName}" saved successfully!`);
+  } catch (err) {
+    console.error('Network error:', err);
+    toast.error('Network error — could not save build');
+  }
+};
   // Get compatible motherboards based on selected CPU
   const compatibleMotherboards = selectedParts.processor
     ? mockMotherboards.filter((mb) => mb.socket_type === selectedParts.processor?.socket_type)
