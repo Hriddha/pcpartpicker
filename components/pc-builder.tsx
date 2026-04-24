@@ -112,9 +112,20 @@ export function PCBuilder() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     
     // Store in localStorage for demo
-    const existingBuilds = JSON.parse(localStorage.getItem('pcBuilds') || '[]');
-    existingBuilds.push({ ...buildData, id: Date.now(), created_at: new Date().toISOString() });
-    localStorage.setItem('pcBuilds', JSON.stringify(existingBuilds));
+    // const existingBuilds = JSON.parse(localStorage.getItem('pcBuilds') || '[]');
+    // existingBuilds.push({ ...buildData, id: Date.now(), created_at: new Date().toISOString() });
+    // localStorage.setItem('pcBuilds', JSON.stringify(existingBuilds));
+    const res = await fetch('https://pcpartpicker-production.up.railway.app/builds.php',{
+      method: "POST",
+      headers:{
+        "Content-Type": "application/json",
+      },
+      body:JSON.stringify({...buildData})
+    })
+
+    const data = await res.json
+    console.log(data)
+    
 
     toast.success(`Build "${buildName}" saved successfully!`);
   };

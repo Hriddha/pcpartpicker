@@ -43,11 +43,16 @@ export function BuildSummary({
   compatibilityResult,
   onClearAll,
   onSaveBuild,
-  isLoading,
+  isLoading = false,
 }: BuildSummaryProps) {
   const selectedCount = Object.values(selectedParts).filter(Boolean).length;
   const totalParts = partConfig.length;
   const completionPercentage = (selectedCount / totalParts) * 100;
+
+  // Explicitly coerce to boolean to avoid SSR/client hydration mismatch
+  // where React serializes `null` on server vs `true`/`false` on client.
+  const isClearDisabled = selectedCount === 0;
+  const isSaveDisabled = selectedCount === 0 || isLoading === true;
 
   const getPartName = (key: keyof SelectedParts): string => {
     const part = selectedParts[key];
@@ -71,7 +76,7 @@ export function BuildSummary({
         {/* Parts List */}
         <div className="space-y-2">
           {partConfig.map(({ key, label, icon: Icon }) => {
-            const isSelected = selectedParts[key] !== null;
+            const isSelected = Boolean(selectedParts[key]);
             return (
               <div
                 key={key}
@@ -83,14 +88,21 @@ export function BuildSummary({
                 <div
                   className={cn(
                     'p-1.5 rounded-md',
-                    isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    isSelected
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
                   )}
                 >
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className={cn('text-sm truncate', isSelected ? 'font-medium' : 'text-muted-foreground')}>
+                  <p
+                    className={cn(
+                      'text-sm truncate',
+                      isSelected ? 'font-medium' : 'text-muted-foreground'
+                    )}
+                  >
                     {getPartName(key)}
                   </p>
                 </div>
@@ -184,9 +196,12 @@ export function BuildSummary({
                   variant="outline"
                   className={cn(
                     'text-xs',
-                    compatibilityResult.performance.tier === 'Enthusiast' && 'border-primary text-primary',
-                    compatibilityResult.performance.tier === 'High End' && 'border-accent text-accent',
-                    compatibilityResult.performance.tier === 'Mid Range' && 'border-[oklch(0.75_0.18_80)] text-[oklch(0.75_0.18_80)]'
+                    compatibilityResult.performance.tier === 'Enthusiast' &&
+                      'border-primary text-primary',
+                    compatibilityResult.performance.tier === 'High End' &&
+                      'border-accent text-accent',
+                    compatibilityResult.performance.tier === 'Mid Range' &&
+                      'border-[oklch(0.75_0.18_80)] text-[oklch(0.75_0.18_80)]'
                   )}
                 >
                   {compatibilityResult.performance.tier}
@@ -211,7 +226,8 @@ export function BuildSummary({
             variant="outline"
             size="sm"
             onClick={onClearAll}
-            disabled={selectedCount === 0}
+            disabled={isClearDisabled}
+            suppressHydrationWarning
             className="flex-1"
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -220,7 +236,8 @@ export function BuildSummary({
           <Button
             size="sm"
             onClick={onSaveBuild}
-            disabled={selectedCount === 0 || isLoading}
+            disabled={isSaveDisabled}
+            suppressHydrationWarning
             className="flex-1"
           >
             <Save className="h-4 w-4 mr-2" />
