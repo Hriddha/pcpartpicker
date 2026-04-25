@@ -1,34 +1,17 @@
 <?php
 /**
- * PC Builds API Endpoint (SECURE VERSION)
- * Uses JWT authentication instead of trusting frontend user_id
+ * PC Builds API Endpoint
+ * Handles CRUD operations for saved PC builds
  */
-
 require_once 'config.php';
-require_once 'auth.php';
 
 $db = Database::getInstance()->getConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
-/**
- * Get authenticated user ID from JWT
- */
-function getAuthenticatedUserId() {
-    $token = getAuthToken();
-    if (!$token) return null;
-
-    $payload = verifyJWT($token);
-    if (!$payload) return null;
-
-    return $payload['user_id'];
-}
-
 switch ($method) {
-
-    // ========================= GET =========================
     case 'GET':
         if (isset($_GET['id'])) {
-            // Get specific build
+            // Get specific build with ALL component details including IDs for loading
             $stmt = $db->prepare("
                 SELECT 
                     b.*,
@@ -50,11 +33,14 @@ switch ($method) {
             $stmt->execute([$_GET['id']]);
             $build = $stmt->fetch();
 
-            if ($build) sendResponse($build);
-            else sendResponse(['error' => 'Build not found'], 404);
+            if ($build) {
+                sendResponse($build);
+            } else {
+                sendResponse(['error' => 'Build not found'], 404);
+            }
 
         } elseif (isset($_GET['user_id'])) {
-            // Get builds by user (OPTIONAL: can restrict later)
+            // Get all builds for a specific user
             $stmt = $db->prepare("
                 SELECT 
                     b.*,
@@ -73,10 +59,11 @@ switch ($method) {
                 ORDER BY b.created_at DESC
             ");
             $stmt->execute([$_GET['user_id']]);
-            sendResponse($stmt->fetchAll());
+            $builds = $stmt->fetchAll();
+            sendResponse($builds);
 
         } else {
-            // Get all builds
+            // Get all builds — include ALL joined fields so cards show full info
             $stmt = $db->query("
                 SELECT 
                     b.*,
@@ -94,18 +81,12 @@ switch ($method) {
                 ORDER BY b.created_at DESC
                 LIMIT 50
             ");
-            sendResponse($stmt->fetchAll());
+            $builds = $stmt->fetchAll();
+            sendResponse($builds);
         }
         break;
 
-    // ========================= POST =========================
     case 'POST':
-        $user_id = getAuthenticatedUserId();
-
-        if (!$user_id) {
-            sendResponse(['error' => 'Unauthorized'], 401);
-        }
-
         $data = getRequestBody();
 
         if (!isset($data['build_name'])) {
@@ -113,13 +94,11 @@ switch ($method) {
         }
 
         $stmt = $db->prepare("
-            INSERT INTO builds 
-            (user_id, build_name, processor_id, motherboard_id, ram_id, gpu_id, storage_id, psu_id, created_at) 
+            INSERT INTO builds (user_id, build_name, processor_id, motherboard_id, ram_id, gpu_id, storage_id, psu_id, created_at) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-
         $stmt->execute([
-            $user_id,
+            $data['user_id'] ?? null,
             $data['build_name'],
             $data['processor_id'] ?? null,
             $data['motherboard_id'] ?? null,
@@ -129,41 +108,20 @@ switch ($method) {
             $data['psu_id'] ?? null,
         ]);
 
-        sendResponse([
-            'message' => 'Build created',
-            'id' => (int)$db->lastInsertId()
-        ], 201);
+        sendResponse(['message' => 'Build created', 'id' => (int)$db->lastInsertId()], 201);
         break;
 
-    // ========================= PUT =========================
     case 'PUT':
-        $user_id = getAuthenticatedUserId();
-
-        if (!$user_id) {
-            sendResponse(['error' => 'Unauthorized'], 401);
-        }
-
         if (!isset($_GET['id'])) {
             sendResponse(['error' => 'Build ID required'], 400);
         }
 
         $data = getRequestBody();
-
-        // Ensure user owns the build
-        $stmt = $db->prepare("SELECT user_id FROM builds WHERE build_id = ?");
-        $stmt->execute([$_GET['id']]);
-        $build = $stmt->fetch();
-
-        if (!$build || $build['user_id'] != $user_id) {
-            sendResponse(['error' => 'Forbidden'], 403);
-        }
-
         $stmt = $db->prepare("
             UPDATE builds 
             SET build_name = ?, processor_id = ?, motherboard_id = ?, ram_id = ?, gpu_id = ?, storage_id = ?, psu_id = ?
             WHERE build_id = ?
         ");
-
         $stmt->execute([
             $data['build_name'],
             $data['processor_id'] ?? null,
@@ -178,25 +136,9 @@ switch ($method) {
         sendResponse(['message' => 'Build updated']);
         break;
 
-    // ========================= DELETE =========================
     case 'DELETE':
-        $user_id = getAuthenticatedUserId();
-
-        if (!$user_id) {
-            sendResponse(['error' => 'Unauthorized'], 401);
-        }
-
         if (!isset($_GET['id'])) {
             sendResponse(['error' => 'Build ID required'], 400);
-        }
-
-        // Ensure user owns the build
-        $stmt = $db->prepare("SELECT user_id FROM builds WHERE build_id = ?");
-        $stmt->execute([$_GET['id']]);
-        $build = $stmt->fetch();
-
-        if (!$build || $build['user_id'] != $user_id) {
-            sendResponse(['error' => 'Forbidden'], 403);
         }
 
         $stmt = $db->prepare("DELETE FROM builds WHERE build_id = ?");
