@@ -32,6 +32,8 @@ import type {
 export function PCBuilder() {
   const searchParams = useSearchParams();
   const loadId = searchParams.get('load');
+  const preCategory = searchParams.get('category');
+  const preId = searchParams.get('id');
 
   // Parts lists fetched from API
   const [processors, setProcessors] = useState<Processor[]>([]);
@@ -87,6 +89,25 @@ export function PCBuilder() {
 
     fetchAllParts();
   }, []);
+
+
+  // Preselect a part from ?category=&id= (coming from "Add to Builder")
+useEffect(() => {
+  if (isLoadingParts || !preCategory || !preId) return;
+  const id = Number(preId);
+  setSelectedParts((prev) => {
+    switch (preCategory) {
+      case 'processors':   return { ...prev, processor:   processors.find((p) => p.processor_id === id)    ?? prev.processor };
+      case 'motherboards': return { ...prev, motherboard: motherboards.find((m) => m.motherboard_id === id) ?? prev.motherboard };
+      case 'ram':          return { ...prev, ram:          ramList.find((r) => r.ram_id === id)              ?? prev.ram };
+      case 'gpus':         return { ...prev, gpu:          gpus.find((g) => g.gpu_id === id)                ?? prev.gpu };
+      case 'storage':      return { ...prev, storage:      storageList.find((s) => s.storage_id === id)     ?? prev.storage };
+      case 'psu':          return { ...prev, psu:          psus.find((p) => p.psu_id === id)                ?? prev.psu };
+      default:             return prev;
+    }
+  });
+  toast.success('Part added to builder!');
+}, [isLoadingParts, preCategory, preId, processors, motherboards, ramList, gpus, storageList, psus]);
 
   // Load build from API when ?load= param is present
   // Only runs after parts lists are loaded so IDs can be matched correctly
