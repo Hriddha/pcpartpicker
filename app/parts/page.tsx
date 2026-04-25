@@ -59,20 +59,6 @@ const categories = [
     count: 145,
     image: "/images/psu.jpg",
   },
-  {
-    id: "cases",
-    name: "Cases",
-    description: "ATX, Mid Tower, Full Tower",
-    count: 96,
-    image: "/images/case.jpg",
-  },
-  {
-    id: "cooling",
-    name: "CPU Cooling",
-    description: "Air Coolers, AIO Liquid",
-    count: 117,
-    image: "/images/cooling.jpg",
-  },
 ];
 
 export default function PartsPage() {
@@ -88,7 +74,6 @@ export default function PartsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Browse Parts</h1>
           <p className="text-muted-foreground">
@@ -96,7 +81,6 @@ export default function PartsPage() {
           </p>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -122,7 +106,6 @@ export default function PartsPage() {
           </div>
         </div>
 
-        {/* Categories Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredCategories.map((category) => (
             <Link key={category.id} href={`/parts/${category.id}`}>

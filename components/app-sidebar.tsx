@@ -23,7 +23,6 @@ const navItems = [
   { href: "/parts", label: "Parts", icon: Package },
   { href: "/categories", label: "Categories", icon: Grid3X3 },
   { href: "/compare", label: "Compare", icon: ArrowLeftRight },
-  { href: "/saved", label: "Saved Lists", icon: Bookmark },
 ];
 
 const bottomNavItems = [
