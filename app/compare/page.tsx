@@ -234,33 +234,30 @@ export default function ComparePage() {
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="p-3 text-left text-sm font-medium text-muted-foreground">
-                        Specification
-                      </th>
-                      {selectedParts.map((part) => (
-                        <th
-                          key={config.getId(part)}
-                          className="p-3 text-left text-sm font-semibold"
-                        >
-                          {(part as { name: string }).name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+              <thead>
+                <tr className="border-b border-border">
+                  <th key="spec-header" className="p-3 text-left text-sm font-medium text-muted-foreground">
+                    Specification
+                  </th>
+                  {selectedParts.map((part) => (
+                    <th
+                      key={`header-${config.getId(part)}`}
+                      className="p-3 text-left text-sm font-semibold"
+                    >
+                      {(part as { name: string }).name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
                   <tbody>
                     {specLabels.map((label) => (
-                      <tr key={label} className="border-b border-border last:border-0">
+                      <tr key={`row-${label}`} className="border-b border-border last:border-0">
                         <td className="p-3 text-sm text-muted-foreground">{label}</td>
-                        {selectedParts.map((part) => {
-                          const spec = config.getSpecs(part).find((s) => s.label === label);
-                          return (
-                            <td key={config.getId(part)} className="p-3 text-sm">
-                              {spec?.value ?? "—"}
-                            </td>
-                          );
-                        })}
+                        {selectedParts.map((part) => (
+                          <td key={`${label}-${config.getId(part)}`} className="p-3 text-sm">
+                            {config.getSpecs(part).find((s) => s.label === label)?.value ?? "—"}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
